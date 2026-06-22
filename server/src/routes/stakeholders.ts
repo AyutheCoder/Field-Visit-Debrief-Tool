@@ -6,9 +6,9 @@ export const stakeholdersRouter = Router();
 
 stakeholdersRouter.patch(
     '/:id',
-    asyncHandler((req, res) => {
+    asyncHandler(async (req, res) => {
         const body = requireBody(req);
-        const updated = updateStakeholder(req.params.id, {
+        const updated = await updateStakeholder(req.params.id, {
             name: optionalString(body, 'name', 200),
             role: optionalString(body, 'role', 200),
             organization: optionalString(body, 'organization', 200),
@@ -21,8 +21,8 @@ stakeholdersRouter.patch(
 
 stakeholdersRouter.delete(
     '/:id',
-    asyncHandler((req, res) => {
-        if (!deleteStakeholder(req.params.id)) throw new AppError(404, 'Stakeholder not found');
+    asyncHandler(async (req, res) => {
+        if (!(await deleteStakeholder(req.params.id))) throw new AppError(404, 'Stakeholder not found');
         res.status(204).end();
     })
 );

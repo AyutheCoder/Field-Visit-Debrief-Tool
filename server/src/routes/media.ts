@@ -6,9 +6,9 @@ export const mediaRouter = Router();
 
 mediaRouter.patch(
     '/:id',
-    asyncHandler((req, res) => {
+    asyncHandler(async (req, res) => {
         const body = requireBody(req);
-        const updated = updateMedia(req.params.id, {
+        const updated = await updateMedia(req.params.id, {
             caption: optionalString(body, 'caption', 1000),
             transcript: optionalString(body, 'transcript', 50000),
         });
@@ -20,8 +20,8 @@ mediaRouter.patch(
 
 mediaRouter.delete(
     '/:id',
-    asyncHandler((req, res) => {
-        if (!deleteMedia(req.params.id)) throw new AppError(404, 'Media asset not found');
+    asyncHandler(async (req, res) => {
+        if (!(await deleteMedia(req.params.id))) throw new AppError(404, 'Media asset not found');
         res.status(204).end();
     })
 );

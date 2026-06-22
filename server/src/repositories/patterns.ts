@@ -52,11 +52,9 @@ function toStored(row: PatternRow): StoredPattern {
     };
 }
 
-export function listPatterns(): StoredPattern[] {
-    const rows = db
-        .prepare('SELECT * FROM Pattern ORDER BY count DESC, label ASC')
-        .all() as PatternRow[];
-    return rows.map(toStored);
+export async function listPatterns(): Promise<StoredPattern[]> {
+    const rs = await db.execute('SELECT * FROM Pattern ORDER BY count DESC, label ASC');
+    return (rs.rows as unknown as PatternRow[]).map(toStored);
 }
 
 export interface NewPattern {
@@ -70,15 +68,12 @@ export interface NewPattern {
 }
 
 /** Replace the entire Pattern table with a freshly computed set. */
-export function replaceAllPatterns(items: NewPattern[]): void {
-    db.exec('DELETE FROM Pattern;');
-    const stmt = db.prepare(
-        `INSERT INTO Pattern (id, type, label, geography, program, count, visitIds, period)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    );
-
-    for (const p of items) {
-        stmt.run(
+export async function replaceAllPatterns(items: NewPattern[]): Promise<void> {
+    await db.execute('DELETE FROM Pattern;');
+    const stmts = items.map(p => ({
+        sql: `INSERT INTO Pattern (id, type, label, geography, program, count, visitIds, period)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
             newId(),
             p.type,
             p.label,
@@ -87,6 +82,10 @@ export function replaceAllPatterns(items: NewPattern[]): void {
             p.count,
             JSON.stringify(p.visitIds),
             p.period ?? null
-        );
+        ]
+    }));
+    
+    if (stmts.length > 0) {
+        await db.batch(stmts, 'write');
     }
 }

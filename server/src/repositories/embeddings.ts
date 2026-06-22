@@ -24,31 +24,30 @@ function parseVector(json: string): number[] {
     }
 }
 
-export function getEmbedding(visitId: string): number[] | null {
-    const row = db.prepare('SELECT * FROM Embedding WHERE visitId = ?').get(visitId) as
-        | EmbeddingRow
-        | undefined;
+export async function getEmbedding(visitId: string): Promise<number[] | null> {
+    const rs = await db.execute({ sql: 'SELECT * FROM Embedding WHERE visitId = ?', args: [visitId] });
+    const row = rs.rows[0] as unknown as EmbeddingRow | undefined;
     return row ? parseVector(row.vector) : null;
 }
 
-export function listEmbeddings(): VisitEmbedding[] {
-    const rows = db.prepare('SELECT * FROM Embedding').all() as EmbeddingRow[];
+export async function listEmbeddings(): Promise<VisitEmbedding[]> {
+    const rs = await db.execute('SELECT * FROM Embedding');
+    const rows = rs.rows as unknown as EmbeddingRow[];
     return rows.map((r) => ({ visitId: r.visitId, vector: parseVector(r.vector) }));
 }
 
-export function upsertEmbedding(visitId: string, vector: number[]): void {
-    const existing = db.prepare('SELECT id FROM Embedding WHERE visitId = ?').get(visitId) as
-        | { id: string }
-        | undefined;
+export async function upsertEmbedding(visitId: string, vector: number[]): Promise<void> {
+    const rs = await db.execute({ sql: 'SELECT id FROM Embedding WHERE visitId = ?', args: [visitId] });
+    const existing = rs.rows[0] as unknown as { id: string } | undefined;
     const json = JSON.stringify(vector);
+    
     if (existing) {
-        db.prepare('UPDATE Embedding SET vector = ? WHERE id = ?').run(json, existing.id);
+        await db.execute({ sql: 'UPDATE Embedding SET vector = ? WHERE id = ?', args: [json, existing.id] });
     } else {
-        db.prepare('INSERT INTO Embedding (id, visitId, vector) VALUES (?, ?, ?)')
-            .run(newId(), visitId, json);
+        await db.execute({ sql: 'INSERT INTO Embedding (id, visitId, vector) VALUES (?, ?, ?)', args: [newId(), visitId, json] });
     }
 }
 
-export function deleteEmbedding(visitId: string): void {
-    db.prepare('DELETE FROM Embedding WHERE visitId = ?').run(visitId);
+export async function deleteEmbedding(visitId: string): Promise<void> {
+    await db.execute({ sql: 'DELETE FROM Embedding WHERE visitId = ?', args: [visitId] });
 }

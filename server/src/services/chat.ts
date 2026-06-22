@@ -171,7 +171,7 @@ export async function answerQuestion(question: string): Promise<ChatResponse> {
     }
 
     if (visits.length === 0) {
-        visits = lexicalRetrieve(trimmed, listVisitsWithRelations(), MAX_CONTEXT_VISITS);
+        visits = lexicalRetrieve(trimmed, await listVisitsWithRelations(), MAX_CONTEXT_VISITS);
     }
 
     const sources = visits.map(toSource);

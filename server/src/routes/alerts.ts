@@ -7,7 +7,7 @@ export const alertsRouter = Router();
 // Early-warning alerts: blocker spikes by region in the recent window.
 alertsRouter.get(
     '/',
-    asyncHandler((_req, res) => {
-        res.json(computeAlerts());
+    asyncHandler(async (_req, res) => {
+        res.json(await computeAlerts());
     })
 );

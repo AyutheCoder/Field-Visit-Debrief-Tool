@@ -22,17 +22,17 @@ const PRIORITIES = ['high', 'medium', 'low'] as const;
 // // List action items for a debrief
 debriefsRouter.get(
     '/:id/actions',
-    asyncHandler((req, res) => {
-        if (!getDebrief(req.params.id)) throw new AppError(404, 'Debrief not found');
-        res.json(listActionsByDebrief(req.params.id));
+    asyncHandler(async (req, res) => {
+        if (!(await getDebrief(req.params.id))) throw new AppError(404, 'Debrief not found');
+        res.json(await listActionsByDebrief(req.params.id));
     })
 );
 
 // // Add an action item to a debrief
 debriefsRouter.post(
     '/:id/actions',
-    asyncHandler((req, res) => {
-        if (!getDebrief(req.params.id)) throw new AppError(404, 'Debrief not found');
+    asyncHandler(async (req, res) => {
+        if (!(await getDebrief(req.params.id))) throw new AppError(404, 'Debrief not found');
         const body = requireBody(req);
         const input: ActionInput = {
             description: requireString(body, 'description', 2000),
@@ -41,15 +41,15 @@ debriefsRouter.post(
             dueDate: optionalString(body, 'dueDate', 40),
         };
 
-        const created = createAction(req.params.id, input);
+        const created = await createAction(req.params.id, input);
         res.status(201).json(created);
     })
 );
 
 debriefsRouter.delete(
     '/:id',
-    asyncHandler((req, res) => {
-        if (!deleteDebrief(req.params.id)) throw new AppError(404, 'Debrief not found');
+    asyncHandler(async (req, res) => {
+        if (!(await deleteDebrief(req.params.id))) throw new AppError(404, 'Debrief not found');
         res.status(204).end();
     })
 );

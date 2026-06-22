@@ -50,7 +50,7 @@ export async function transcribeVisitAudio(
     visitId: string,
     force = false
 ): Promise<TranscriptionResult[]> {
-    const visit = getVisitWithRelations(visitId);
+    const visit = await getVisitWithRelations(visitId);
     if (!visit) throw new AppError(404, 'Visit not found');
 
     const audio = visit.media.filter((m) => m.type === 'audio');
@@ -67,7 +67,7 @@ export async function transcribeVisitAudio(
 
         const mimetype = `audio/${basename(asset.url).split('.').pop() || 'webm'}`;
         const transcript = await transcribeAudioFile(resolveMediaPath(asset.url), mimetype);
-        updateMedia(asset.id, { transcript });
+        await updateMedia(asset.id, { transcript });
         results.push({ mediaId: asset.id, url: asset.url, transcript });
     }
     return results;
@@ -95,7 +95,9 @@ Rules:
 - follow_ups: actionable next steps with a realistic priority. owner_suggestion is a role/person if implied, else "".
 - Do not invent facts. Keep everything grounded in the input.`;
 
-function buildContext(visit: ReturnType<typeof getVisitWithRelations>): string {
+import type { VisitWithRelations } from '../types';
+
+function buildContext(visit: VisitWithRelations | null): string {
     if (!visit) return '';
     const lines: string[] = [];
     lines.push(`Location: ${visit.locationName}`);
@@ -214,7 +216,7 @@ function coerceDebrief(raw: unknown): ParsedDebrief {
  * recreates ActionItems from the follow-ups.
  */
 export async function generateVisitDebrief(visitId: string) {
-    let visit = getVisitWithRelations(visitId);
+    let visit = await getVisitWithRelations(visitId);
     if (!visit) throw new AppError(404, 'Visit not found');
 
     // Make sure transcripts are available before summarising.
@@ -223,7 +225,7 @@ export async function generateVisitDebrief(visitId: string) {
     );
     if (hasUntranscribed) {
         await transcribeVisitAudio(visitId);
-        visit = getVisitWithRelations(visitId)!;
+        visit = (await getVisitWithRelations(visitId))!;
     }
 
     const hasContent =
@@ -240,7 +242,7 @@ export async function generateVisitDebrief(visitId: string) {
     const raw = await generateJson(SYSTEM_PROMPT, `Visit report:\n\n${context}`);
     const parsed = coerceDebrief(raw);
 
-    const debrief = upsertDebrief(visitId, {
+    const debrief = await upsertDebrief(visitId, {
         keyFindings: parsed.keyFindings,
         blockers: parsed.blockers,
         sentimentLabel: parsed.sentimentLabel,
@@ -252,9 +254,9 @@ export async function generateVisitDebrief(visitId: string) {
     });
 
     // Replace any previously generated action items with the new follow-ups.
-    deleteActionsByDebrief(debrief.id);
+    await deleteActionsByDebrief(debrief.id);
     for (const f of parsed.followUps) {
-        createAction(debrief.id, {
+        await createAction(debrief.id, {
             description: f.action,
             owner: f.owner_suggestion || undefined,
             priority: f.priority,
@@ -262,5 +264,5 @@ export async function generateVisitDebrief(visitId: string) {
         });
     }
 
-    return getDebriefWithActions(visitId)!;
+    return await getDebriefWithActions(visitId);
 }

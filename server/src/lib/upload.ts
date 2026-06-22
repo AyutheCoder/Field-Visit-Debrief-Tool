@@ -3,9 +3,15 @@ import { extname, join } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { AppError } from './http';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 
 export const UPLOADS_DIR = join(process.cwd(), 'uploads');
-mkdirSync(UPLOADS_DIR, { recursive: true });
+try {
+    mkdirSync(UPLOADS_DIR, { recursive: true });
+} catch (e) {
+    // ignore
+}
 
 const ALLOWED = new Set([
     'image/jpeg',
@@ -21,13 +27,36 @@ const ALLOWED = new Set([
     'audio/mp3',
 ]);
 
-const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-    filename: (_req, file, cb) => {
-        const ext = extname(file.originalname) || guessExt(file.mimetype);
-        cb(null, `${Date.now()}-${randomUUID().slice(0, 8)}${ext}`);
-    },
-});
+let storage: multer.StorageEngine;
+
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+
+    storage = new CloudinaryStorage({
+        cloudinary: cloudinary,
+        params: async (_req, file) => {
+            let ext = guessExt(file.mimetype).replace('.', '');
+            if (ext === 'webm') ext = 'mkv'; // cloudinary sometimes prefers video extensions for webm
+            return {
+                folder: 'field-visit-debrief',
+                resource_type: file.mimetype.startsWith('audio/') ? 'video' : 'image',
+                format: ext || undefined,
+            };
+        },
+    });
+} else {
+    storage = multer.diskStorage({
+        destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+        filename: (_req, file, cb) => {
+            const ext = extname(file.originalname) || guessExt(file.mimetype);
+            cb(null, `${Date.now()}-${randomUUID().slice(0, 8)}${ext}`);
+        },
+    });
+}
 
 function guessExt(mime: string): string {
     if (mime.startsWith('image/')) return `.${mime.split('/')[1]}`;

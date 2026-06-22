@@ -57,12 +57,12 @@ function mostCommon(values: string[]): string {
     return best;
 }
 
-export function computeAlerts(now: Date = new Date()): AlertsResponse {
+export async function computeAlerts(now: Date = new Date()): Promise<AlertsResponse> {
     const nowMs = now.getTime();
     const recentStart = nowMs - RECENT_WINDOW_DAYS * DAY_MS;
     const baselineStart = recentStart - BASELINE_WINDOW_DAYS * DAY_MS;
 
-    const visits = listVisitsWithRelations();
+    const visits = await listVisitsWithRelations();
     const buckets = new Map<string, Bucket>();
 
     for (const v of visits) {

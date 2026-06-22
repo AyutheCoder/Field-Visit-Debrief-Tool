@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { newId } from '../lib/ids';
-import type { Blocker, Debrief, FollowUp, SentimentLabel } from '../types';
+import type { Blocker, Debrief, FollowUp, SentimentLabel, ActionItem } from '../types';
 import { listActionsByDebrief } from './actionItems';
 
 interface DebriefRow {
@@ -41,24 +41,24 @@ function toDebrief(row: DebriefRow): Debrief {
     };
 }
 
-export function getDebriefByVisit(visitId: string): Debrief | null {
-    const row = db.prepare('SELECT * FROM Debrief WHERE visitId = ?').get(visitId) as
-        | DebriefRow
-        | undefined;
-
+export async function getDebriefByVisit(visitId: string): Promise<Debrief | null> {
+    const rs = await db.execute({ sql: 'SELECT * FROM Debrief WHERE visitId = ?', args: [visitId] });
+    const row = rs.rows[0] as unknown as DebriefRow | undefined;
     return row ? toDebrief(row) : null;
 }
 
-export function getDebriefWithActions(
+export async function getDebriefWithActions(
     visitId: string
-): (Debrief & { actionItems: ReturnType<typeof listActionsByDebrief> }) | null {
-    const debrief = getDebriefByVisit(visitId);
+): Promise<(Debrief & { actionItems: ActionItem[] }) | null> {
+    const debrief = await getDebriefByVisit(visitId);
     if (!debrief) return null;
-    return { ...debrief, actionItems: listActionsByDebrief(debrief.id) };
+    const actionItems = await listActionsByDebrief(debrief.id);
+    return { ...debrief, actionItems };
 }
 
-export function getDebrief(id: string): Debrief | null {
-    const row = db.prepare('SELECT * FROM Debrief WHERE id = ?').get(id) as DebriefRow | undefined;
+export async function getDebrief(id: string): Promise<Debrief | null> {
+    const rs = await db.execute({ sql: 'SELECT * FROM Debrief WHERE id = ?', args: [id] });
+    const row = rs.rows[0] as unknown as DebriefRow | undefined;
     return row ? toDebrief(row) : null;
 }
 
@@ -74,8 +74,8 @@ export interface DebriefInput {
 }
 
 /** Create or replace the debrief for a visit (one debrief per visit). */
-export function upsertDebrief(visitId: string, input: DebriefInput): Debrief {
-    const existing = getDebriefByVisit(visitId);
+export async function upsertDebrief(visitId: string, input: DebriefInput): Promise<Debrief> {
+    const existing = await getDebriefByVisit(visitId);
     const merged: Required<DebriefInput> = {
         keyFindings: input.keyFindings ?? existing?.keyFindings ?? [],
         blockers: input.blockers ?? existing?.blockers ?? [],
@@ -88,10 +88,32 @@ export function upsertDebrief(visitId: string, input: DebriefInput): Debrief {
     };
 
     if (existing) {
-        db.prepare(
-            `UPDATE Debrief SET keyFindings = ?, blockers = ?, sentimentLabel = ?, sentimentScore = ?,
-       sentimentRationale = ?, followUps = ?, aiModel = ?, editedByHuman = ? WHERE id = ?`
-        ).run(
+        await db.execute({
+            sql: `UPDATE Debrief SET keyFindings = ?, blockers = ?, sentimentLabel = ?, sentimentScore = ?,
+       sentimentRationale = ?, followUps = ?, aiModel = ?, editedByHuman = ? WHERE id = ?`,
+            args: [
+                JSON.stringify(merged.keyFindings),
+                JSON.stringify(merged.blockers),
+                merged.sentimentLabel,
+                merged.sentimentScore,
+                merged.sentimentRationale,
+                JSON.stringify(merged.followUps),
+                merged.aiModel,
+                merged.editedByHuman ? 1 : 0,
+                existing.id
+            ]
+        });
+        return (await getDebrief(existing.id))!;
+    }
+
+    const id = newId();
+    await db.execute({
+        sql: `INSERT INTO Debrief (id, visitId, keyFindings, blockers, sentimentLabel, sentimentScore,
+     sentimentRationale, followUps, aiModel, editedByHuman)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+            id,
+            visitId,
             JSON.stringify(merged.keyFindings),
             JSON.stringify(merged.blockers),
             merged.sentimentLabel,
@@ -99,33 +121,13 @@ export function upsertDebrief(visitId: string, input: DebriefInput): Debrief {
             merged.sentimentRationale,
             JSON.stringify(merged.followUps),
             merged.aiModel,
-            merged.editedByHuman ? 1 : 0,
-            existing.id
-        );
-        return getDebrief(existing.id)!;
-    }
-
-    const id = newId();
-    db.prepare(
-        `INSERT INTO Debrief (id, visitId, keyFindings, blockers, sentimentLabel, sentimentScore,
-     sentimentRationale, followUps, aiModel, editedByHuman)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-        id,
-        visitId,
-        JSON.stringify(merged.keyFindings),
-        JSON.stringify(merged.blockers),
-        merged.sentimentLabel,
-        merged.sentimentScore,
-        merged.sentimentRationale,
-        JSON.stringify(merged.followUps),
-        merged.aiModel,
-        merged.editedByHuman ? 1 : 0
-    );
-    return getDebrief(id)!;
+            merged.editedByHuman ? 1 : 0
+        ]
+    });
+    return (await getDebrief(id))!;
 }
 
-export function deleteDebrief(id: string): boolean {
-    const result = db.prepare('DELETE FROM Debrief WHERE id = ?').run(id);
-    return result.changes > 0;
+export async function deleteDebrief(id: string): Promise<boolean> {
+    const rs = await db.execute({ sql: 'DELETE FROM Debrief WHERE id = ?', args: [id] });
+    return rs.rowsAffected > 0;
 }

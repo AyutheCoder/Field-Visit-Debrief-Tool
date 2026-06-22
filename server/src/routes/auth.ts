@@ -13,7 +13,7 @@ authRouter.post(
         const email = requireString(body, 'email', 200);
         const password = requireString(body, 'password', 200);
 
-        const user = getUserByEmail(email);
+        const user = await getUserByEmail(email);
         if (!user || !passwordMatches(password)) {
             throw new AppError(401, 'Invalid email or password');
         }

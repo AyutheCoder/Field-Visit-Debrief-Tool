@@ -115,12 +115,12 @@ function buildPattern(units: IssueUnit[], idxs: number[]): IssuePattern {
     };
 }
 
-function finalize(
+async function finalize(
     units: IssueUnit[],
     clusters: number[][],
     method: 'semantic' | 'lexical',
     visitsAnalyzed: number
-): PatternsResult {
+): Promise<PatternsResult> {
     const patterns = clusters
         .map((idxs) => buildPattern(units, idxs))
         .sort(
@@ -131,7 +131,7 @@ function finalize(
         )
         .map((p, i) => ({ ...p, id: `p${i + 1}` }));
 
-    replaceAllPatterns(
+    await replaceAllPatterns(
         patterns.map((p) => ({
             type: 'blocker',
             label: p.label,
@@ -163,7 +163,7 @@ function clusterLexically(units: IssueUnit[]): number[][] {
 }
 
 export async function computePatterns(): Promise<PatternsResult> {
-    const visits = listVisitsWithRelations();
+    const visits = await listVisitsWithRelations();
 
     const units: IssueUnit[] = [];
     for (const v of visits) {
@@ -181,7 +181,7 @@ export async function computePatterns(): Promise<PatternsResult> {
     }
 
     if (units.length === 0) {
-        return finalize(units, [], 'lexical', visits.length);
+        return await finalize(units, [], 'lexical', visits.length);
     }
 
     // Try semantic clustering when an API key is configured.
@@ -207,12 +207,12 @@ export async function computePatterns(): Promise<PatternsResult> {
                     else groups.set(ci, [ui]);
                 });
 
-                return finalize(units, [...groups.values()], 'semantic', visits.length);
+                return await finalize(units, [...groups.values()], 'semantic', visits.length);
             }
         } catch {
             // Fall through to lexical grouping on any embedding failure.
         }
     }
 
-    return finalize(units, clusterLexically(units), 'lexical', visits.length);
+    return await finalize(units, clusterLexically(units), 'lexical', visits.length);
 }

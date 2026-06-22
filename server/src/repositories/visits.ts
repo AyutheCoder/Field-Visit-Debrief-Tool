@@ -32,9 +32,9 @@ export interface VisitFilters {
     to?: string;
 }
 
-export function listVisVisits(filters: VisitFilters = {}): Visit[] {
+export async function listVisits(filters: VisitFilters = {}): Promise<Visit[]> {
     const clauses: string[] = [];
-    const params: unknown[] = [];
+    const params: any[] = [];
 
     if (filters.programArea) {
         clauses.push('v.programArea = ?');
@@ -58,36 +58,41 @@ export function listVisVisits(filters: VisitFilters = {}): Visit[] {
     }
 
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
-    const rows = db
-        .prepare(
-            `SELECT v.* FROM Visit v
+    const sql = `SELECT v.* FROM Visit v
        LEFT JOIN Debrief d ON d.visitId = v.id
        ${where}
-       ORDER BY v.visitDate DESC`
-        )
-        .all(...params) as VisitRow[];
-    return rows.map(toVisit);
+       ORDER BY v.visitDate DESC`;
+
+    const rs = await db.execute({ sql, args: params });
+    return (rs.rows as unknown as VisitRow[]).map(toVisit);
 }
 
-export function getVisit(id: string): Visit | null {
-    const row = db.prepare('SELECT * FROM Visit WHERE id = ?').get(id) as VisitRow | undefined;
+export async function getVisit(id: string): Promise<Visit | null> {
+    const rs = await db.execute({ sql: 'SELECT * FROM Visit WHERE id = ?', args: [id] });
+    const row = rs.rows[0] as unknown as VisitRow | undefined;
     return row ? toVisit(row) : null;
 }
 
-export function getVisitWithRelations(id: string): VisitWithRelations | null {
-    const visit = getVisit(id);
+export async function getVisitWithRelations(id: string): Promise<VisitWithRelations | null> {
+    const visit = await getVisit(id);
     if (!visit) return null;
+    const [stakeholders, media, debrief] = await Promise.all([
+        listStakeholders(id),
+        listMedia(id),
+        getDebriefWithActions(id)
+    ]);
     return {
         ...visit,
-        stakeholders: listStakeholders(id),
-        media: listMedia(id),
-        debrief: getDebriefWithActions(id),
+        stakeholders,
+        media,
+        debrief,
     };
 }
 
 /** List visits enriched with their full relations (for the dashboard). */
-export function listVisitsWithRelations(filters: VisitFilters = {}): VisitWithRelations[] {
-    return listVisVisits(filters).map((v) => getVisitWithRelations(v.id)!);
+export async function listVisitsWithRelations(filters: VisitFilters = {}): Promise<VisitWithRelations[]> {
+    const visits = await listVisits(filters);
+    return Promise.all(visits.map(v => getVisitWithRelations(v.id).then(r => r!)));
 }
 
 export interface VisitInput {
@@ -103,58 +108,60 @@ export interface VisitInput {
     stakeholders?: StakeholderInput[];
 }
 
-export function createVisit(input: VisitInput): VisitWithRelations {
+export async function createVisit(input: VisitInput): Promise<VisitWithRelations> {
     const id = newId();
-    db.prepare(
-        `INSERT INTO Visit (id, userId, locationName, lat, lng, visitDate, programArea,
+    await db.execute({
+        sql: `INSERT INTO Visit (id, userId, locationName, lat, lng, visitDate, programArea,
      visitType, rawNotesText, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-        id,
-        input.userId ?? null,
-        input.locationName,
-        input.lat ?? null,
-        input.lng ?? null,
-        input.visitDate ?? new Date().toISOString(),
-        input.programArea,
-        input.visitType ?? null,
-        input.rawNotesText ?? null,
-        input.status ?? 'synced'
-    );
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+            id,
+            input.userId ?? null,
+            input.locationName,
+            input.lat ?? null,
+            input.lng ?? null,
+            input.visitDate ?? new Date().toISOString(),
+            input.programArea,
+            input.visitType ?? null,
+            input.rawNotesText ?? null,
+            input.status ?? 'synced'
+        ]
+    });
 
-    for (const s of input.stakeholders ?? []) {
-        createStakeholder(id, s);
+    if (input.stakeholders && input.stakeholders.length > 0) {
+        await Promise.all(input.stakeholders.map(s => createStakeholder(id, s)));
     }
 
-    return getVisitWithRelations(id)!;
+    return (await getVisitWithRelations(id))!;
 }
 
 export type VisitUpdate = Partial<Omit<VisitInput, 'stakeholders'>> & { syncedAt?: string };
 
-export function updateVisit(id: string, input: VisitUpdate): Visit | null {
-    const existing = getVisit(id);
+export async function updateVisit(id: string, input: VisitUpdate): Promise<Visit | null> {
+    const existing = await getVisit(id);
     if (!existing) return null;
-    db.prepare(
-        `UPDATE Visit SET userId = ?, locationName = ?, lat = ?, lng = ?, visitDate = ?,
+    await db.execute({
+        sql: `UPDATE Visit SET userId = ?, locationName = ?, lat = ?, lng = ?, visitDate = ?,
      programArea = ?, visitType = ?, rawNotesText = ?, status = ?, syncedAt = ?
-     WHERE id = ?`
-    ).run(
-        input.userId ?? existing.userId,
-        input.locationName ?? existing.locationName,
-        input.lat ?? existing.lat,
-        input.lng ?? existing.lng,
-        input.visitDate ?? existing.visitDate,
-        input.programArea ?? existing.programArea,
-        input.visitType ?? existing.visitType,
-        input.rawNotesText ?? existing.rawNotesText,
-        input.status ?? existing.status,
-        input.syncedAt ?? existing.syncedAt,
-        id
-    );
-    return getVisit(id);
+     WHERE id = ?`,
+        args: [
+            input.userId ?? existing.userId,
+            input.locationName ?? existing.locationName,
+            input.lat ?? existing.lat,
+            input.lng ?? existing.lng,
+            input.visitDate ?? existing.visitDate,
+            input.programArea ?? existing.programArea,
+            input.visitType ?? existing.visitType,
+            input.rawNotesText ?? existing.rawNotesText,
+            input.status ?? existing.status,
+            input.syncedAt ?? existing.syncedAt,
+            id
+        ]
+    });
+    return await getVisit(id);
 }
 
-export function deleteVisit(id: string): boolean {
-    const result = db.prepare('DELETE FROM Visit WHERE id = ?').run(id);
-    return result.changes > 0;
+export async function deleteVisit(id: string): Promise<boolean> {
+    const rs = await db.execute({ sql: 'DELETE FROM Visit WHERE id = ?', args: [id] });
+    return rs.rowsAffected > 0;
 }

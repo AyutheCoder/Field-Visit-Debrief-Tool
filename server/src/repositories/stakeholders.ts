@@ -14,17 +14,14 @@ function toStakeholder(row: StakeholderRow): Stakeholder {
     return row;
 }
 
-export function listStakeholders(visitId: string): Stakeholder[] {
-    const rows = db
-        .prepare('SELECT * FROM Stakeholder WHERE visitId = ? ORDER BY name')
-        .all(visitId) as StakeholderRow[];
-    return rows.map(toStakeholder);
+export async function listStakeholders(visitId: string): Promise<Stakeholder[]> {
+    const rs = await db.execute({ sql: 'SELECT * FROM Stakeholder WHERE visitId = ? ORDER BY name', args: [visitId] });
+    return (rs.rows as unknown as StakeholderRow[]).map(toStakeholder);
 }
 
-export function getStakeholder(id: string): Stakeholder | null {
-    const row = db.prepare('SELECT * FROM Stakeholder WHERE id = ?').get(id) as
-        | StakeholderRow
-        | undefined;
+export async function getStakeholder(id: string): Promise<Stakeholder | null> {
+    const rs = await db.execute({ sql: 'SELECT * FROM Stakeholder WHERE id = ?', args: [id] });
+    const row = rs.rows[0] as unknown as StakeholderRow | undefined;
     return row ? toStakeholder(row) : null;
 }
 
@@ -34,29 +31,31 @@ export interface StakeholderInput {
     organization?: string;
 }
 
-export function createStakeholder(visitId: string, input: StakeholderInput): Stakeholder {
+export async function createStakeholder(visitId: string, input: StakeholderInput): Promise<Stakeholder> {
     const id = newId();
-    db.prepare(
-        'INSERT INTO Stakeholder (id, visitId, name, role, organization) VALUES (?, ?, ?, ?, ?)'
-    ).run(id, visitId, input.name, input.role ?? null, input.organization ?? null);
-    return getStakeholder(id)!;
+    await db.execute({
+        sql: 'INSERT INTO Stakeholder (id, visitId, name, role, organization) VALUES (?, ?, ?, ?, ?)',
+        args: [id, visitId, input.name, input.role ?? null, input.organization ?? null]
+    });
+    return (await getStakeholder(id))!;
 }
 
-export function updateStakeholder(id: string, input: Partial<StakeholderInput>): Stakeholder | null {
-    const existing = getStakeholder(id);
+export async function updateStakeholder(id: string, input: Partial<StakeholderInput>): Promise<Stakeholder | null> {
+    const existing = await getStakeholder(id);
     if (!existing) return null;
-    db.prepare(
-        'UPDATE Stakeholder SET name = ?, role = ?, organization = ? WHERE id = ?'
-    ).run(
-        input.name ?? existing.name,
-        input.role ?? existing.role,
-        input.organization ?? existing.organization,
-        id
-    );
-    return getStakeholder(id);
+    await db.execute({
+        sql: 'UPDATE Stakeholder SET name = ?, role = ?, organization = ? WHERE id = ?',
+        args: [
+            input.name ?? existing.name,
+            input.role ?? existing.role,
+            input.organization ?? existing.organization,
+            id
+        ]
+    });
+    return await getStakeholder(id);
 }
 
-export function deleteStakeholder(id: string): boolean {
-    const result = db.prepare('DELETE FROM Stakeholder WHERE id = ?').run(id);
-    return result.changes > 0;
+export async function deleteStakeholder(id: string): Promise<boolean> {
+    const rs = await db.execute({ sql: 'DELETE FROM Stakeholder WHERE id = ?', args: [id] });
+    return rs.rowsAffected > 0;
 }

@@ -1,32 +1,34 @@
 import './suppress';
-import { DatabaseSync } from 'node:sqlite';
+import { createClient } from '@libsql/client';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
-// Resolve the database file location.
-// DATABASE_URL may be "file:./data/dev.db" (Prisma-style) or a plain path.
-function resolveDbPath(): string {
+// Support both local SQLite and Turso
+function resolveDbUrl(): string {
     const raw = process.env.DATABASE_URL?.trim() || 'file:./data/dev.db';
-    const withoutScheme = raw.startsWith('file:') ? raw.slice('file:'.length) : raw;
-    const abs = resolve(process.cwd(), withoutScheme);
-    mkdirSync(dirname(abs), { recursive: true });
-    return abs;
+    if (raw.startsWith('file:')) {
+        const withoutScheme = raw.slice('file:'.length);
+        const abs = resolve(process.cwd(), withoutScheme);
+        mkdirSync(dirname(abs), { recursive: true });
+        return `file:${abs}`;
+    }
+    return raw; // e.g. libsql://... or https://...
 }
 
-const DB_PATH = resolveDbPath();
-
-export const db = new DatabaseSync(DB_PATH);
-db.exec('PRAGMA foreign_keys = ON;');
-db.exec('PRAGMA journal_mode = WAL;');
+export const db = createClient({
+    url: resolveDbUrl(),
+    authToken: process.env.DATABASE_AUTH_TOKEN,
+});
 
 /** Create all tables from schema.sql if they do not already exist. */
-export function initSchema(): void {
-    // __dirname works under CommonJS (tsx and compiled dist). schema.sql sits beside this file.
+export async function initSchema(): Promise<void> {
     const schemaPath = join(__dirname, 'schema.sql');
     const sql = readFileSync(schemaPath, 'utf8');
-    db.exec(sql);
+    // split statements because libsql client execute() doesn't handle multiple statements well
+    // or use executeMultiple
+    await db.executeMultiple(sql);
 }
 
 export function getDbPath(): string {
-    return DB_PATH;
+    return resolveDbUrl();
 }

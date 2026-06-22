@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: field_debrief_backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DATABASE_URL=file:/app/data/dev.db
+      - CLIENT_ORIGIN=http://localhost  # Update this to your domain in production
+      - AUTH_SECRET=dev-local-secret-7f3a9c2e1b # Change this in production!
+      # Uncomment and add your API key below:
+      # - OPENAI_API_KEY=sk-or-v1-...
+      # - OPENAI_MODEL=meta-llama/llama-3.3-70b-instruct:free
+    volumes:
+      - db_data:/app/data
+      - uploads_data:/app/uploads
+
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: field_debrief_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
+  uploads_data:

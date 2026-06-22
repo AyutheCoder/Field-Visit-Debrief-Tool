@@ -50,9 +50,9 @@ function parseStakeholderInputs(raw: unknown[] | undefined): StakeholderInput[] 
 // // List visits (with optional filters)
 visitsRouter.get(
     '/',
-    asyncHandler((req, res) => {
+    asyncHandler(async (req, res) => {
         const { programArea, location, sentiment, from, to } = req.query;
-        const visits = listVisits({
+        const visits = await listVisits({
             programArea: typeof programArea === 'string' ? programArea : undefined,
             location: typeof location === 'string' ? location : undefined,
             sentiment: typeof sentiment === 'string' ? sentiment : undefined,
@@ -66,7 +66,7 @@ visitsRouter.get(
 // // Create a visit
 visitsRouter.post(
     '/',
-    asyncHandler((req, res) => {
+    asyncHandler(async (req, res) => {
         const body = requireBody(req);
         const input: VisitInput = {
             locationName: requireString(body, 'locationName', 300),
@@ -80,7 +80,7 @@ visitsRouter.post(
             status: optionalString(body, 'status', 50),
             stakeholders: parseStakeholderInputs(optionalArray(body, 'stakeholders')),
         };
-        const visit = createVisit(input);
+        const visit = await createVisit(input);
         res.status(201).json(visit);
     })
 );
@@ -88,8 +88,8 @@ visitsRouter.post(
 // // Get a single visit with relations
 visitsRouter.get(
     '/:id',
-    asyncHandler((req, res) => {
-        const visit = getVisitWithRelations(req.params.id);
+    asyncHandler(async (req, res) => {
+        const visit = await getVisitWithRelations(req.params.id);
         if (!visit) throw new AppError(404, 'Visit not found');
         res.json(visit);
     })
@@ -98,9 +98,9 @@ visitsRouter.get(
 // // Update a visit
 visitsRouter.patch(
     '/:id',
-    asyncHandler((req, res) => {
+    asyncHandler(async (req, res) => {
         const body = requireBody(req);
-        const updated = updateVisit(req.params.id, {
+        const updated = await updateVisit(req.params.id, {
             locationName: optionalString(body, 'locationName', 300),
             programArea: optionalString(body, 'programArea', 200),
             userId: optionalString(body, 'userId'),
@@ -119,8 +119,8 @@ visitsRouter.patch(
 // // Delete a visit
 visitsRouter.delete(
     '/:id',
-    asyncHandler((req, res) => {
-        const ok = deleteVisit(req.params.id);
+    asyncHandler(async (req, res) => {
+        const ok = await deleteVisit(req.params.id);
         if (!ok) throw new AppError(404, 'Visit not found');
         res.status(204).end();
     })
@@ -129,18 +129,18 @@ visitsRouter.delete(
 // // --- Nested: stakeholders ---
 visitsRouter.get(
     '/:id/stakeholders',
-    asyncHandler((req, res) => {
-        if (!getVisitWithRelations(req.params.id)) throw new AppError(404, 'Visit not found');
-        res.json(listStakeholders(req.params.id));
+    asyncHandler(async (req, res) => {
+        if (!(await getVisitWithRelations(req.params.id))) throw new AppError(404, 'Visit not found');
+        res.json(await listStakeholders(req.params.id));
     })
 );
 
 visitsRouter.post(
     '/:id/stakeholders',
-    asyncHandler((req, res) => {
-        if (!getVisitWithRelations(req.params.id)) throw new AppError(404, 'Visit not found');
+    asyncHandler(async (req, res) => {
+        if (!(await getVisitWithRelations(req.params.id))) throw new AppError(404, 'Visit not found');
         const body = requireBody(req);
-        const created = createStakeholder(req.params.id, {
+        const created = await createStakeholder(req.params.id, {
             name: requireString(body, 'name', 200),
             role: optionalString(body, 'role', 200),
             organization: optionalString(body, 'organization', 200),
@@ -152,9 +152,9 @@ visitsRouter.post(
 // // --- Nested: media ---
 visitsRouter.get(
     '/:id/media',
-    asyncHandler((req, res) => {
-        if (!getVisitWithRelations(req.params.id)) throw new AppError(404, 'Visit not found');
-        res.json(listMedia(req.params.id));
+    asyncHandler(async (req, res) => {
+        if (!(await getVisitWithRelations(req.params.id))) throw new AppError(404, 'Visit not found');
+        res.json(await listMedia(req.params.id));
     })
 );
 
@@ -163,11 +163,11 @@ visitsRouter.post(
     '/:id/upload',
     upload.single('file'),
     asyncHandler(async (req, res) => {
-        if (!getVisitWithRelations(req.params.id)) throw new AppError(404, 'Visit not found');
+        if (!(await getVisitWithRelations(req.params.id))) throw new AppError(404, 'Visit not found');
         if (!req.file) throw new AppError(400, 'No file uploaded (use multipart field "file")');
-        const url = `/uploads/${req.file.filename}`;
+        const url = req.file.path.startsWith('http') ? req.file.path : `/uploads/${req.file.filename}`;
         const caption = typeof req.body?.caption === 'string' ? req.body.caption : undefined;
-        const media = createMedia(req.params.id, {
+        const media = await createMedia(req.params.id, {
             type: mediaTypeFromMime(req.file.mimetype),
             url,
             caption,
@@ -179,9 +179,9 @@ visitsRouter.post(
 // // --- Nested: debrief ---
 visitsRouter.get(
     '/:id/debrief',
-    asyncHandler((req, res) => {
-        if (!getVisitWithRelations(req.params.id)) throw new AppError(404, 'Visit not found');
-        const debrief = getDebriefWithActions(req.params.id);
+    asyncHandler(async (req, res) => {
+        if (!(await getVisitWithRelations(req.params.id))) throw new AppError(404, 'Visit not found');
+        const debrief = await getDebriefWithActions(req.params.id);
         if (!debrief) throw new AppError(404, 'Debrief not found for this visit');
         res.json(debrief);
     })
@@ -190,10 +190,10 @@ visitsRouter.get(
 // // Create/replace the debrief for a visit manually (used to save human edits).
 visitsRouter.put(
     '/:id/debrief',
-    asyncHandler((req, res) => {
-        if (!getVisitWithRelations(req.params.id)) throw new AppError(404, 'Visit not found');
+    asyncHandler(async (req, res) => {
+        if (!(await getVisitWithRelations(req.params.id))) throw new AppError(404, 'Visit not found');
         const body = requireBody(req);
-        const debrief = upsertDebrief(req.params.id, {
+        const debrief = await upsertDebrief(req.params.id, {
             keyFindings: optionalArray(body, 'keyFindings') as string[] | undefined,
             blockers: optionalArray(body, 'blockers') as Blocker[] | undefined,
             followUps: optionalArray(body, 'followUps') as FollowUp[] | undefined,
@@ -203,7 +203,7 @@ visitsRouter.put(
             aiModel: optionalString(body, 'aiModel', 100),
             editedByHuman: typeof body.editedByHuman === 'boolean' ? body.editedByHuman : undefined,
         });
-        res.status(200).json(getDebriefWithActions(req.params.id) ?? debrief);
+        res.status(200).json((await getDebriefWithActions(req.params.id)) ?? debrief);
     })
 );
 

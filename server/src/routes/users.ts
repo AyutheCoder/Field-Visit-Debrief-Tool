@@ -9,16 +9,16 @@ const ROLES = ['field_officer', 'manager', 'admin'] as const;
 
 usersRouter.get(
     '/',
-    asyncHandler((_req, res) => {
-        res.json(listUsers());
+    asyncHandler(async (_req, res) => {
+        res.json(await listUsers());
     })
 );
 
 usersRouter.post(
     '/',
-    asyncHandler((req, res) => {
+    asyncHandler(async (req, res) => {
         const body = requireBody(req);
-        const user = createUser({
+        const user = await createUser({
             name: requireString(body, 'name', 200),
             email: requireString(body, 'email', 200),
             role: optionalEnum<Role>(body, 'role', ROLES),

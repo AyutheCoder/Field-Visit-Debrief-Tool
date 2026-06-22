@@ -22,18 +22,14 @@ function toAction(row: ActionRow): ActionItem {
     };
 }
 
-export function listActionsByDebrief(debriefId: string): ActionItem[] {
-    const rows = db
-        .prepare('SELECT * FROM ActionItem WHERE debriefId = ? ORDER BY createdAt')
-        .all(debriefId) as unknown as ActionRow[];
-    return rows.map(toAction);
+export async function listActionsByDebrief(debriefId: string): Promise<ActionItem[]> {
+    const rs = await db.execute({ sql: 'SELECT * FROM ActionItem WHERE debriefId = ? ORDER BY createdAt', args: [debriefId] });
+    return (rs.rows as unknown as ActionRow[]).map(toAction);
 }
 
-export function listAllActions(): ActionItem[] {
-    const rows = db
-        .prepare('SELECT * FROM ActionItem ORDER BY createdAt DESC')
-        .all() as unknown as ActionRow[];
-    return rows.map(toAction);
+export async function listAllActions(): Promise<ActionItem[]> {
+    const rs = await db.execute('SELECT * FROM ActionItem ORDER BY createdAt DESC');
+    return (rs.rows as unknown as ActionRow[]).map(toAction);
 }
 
 // --- Enriched listing with visit context (for the Action Tracker) ---
@@ -61,10 +57,9 @@ interface ActionContextRow extends ActionRow {
 }
 
 /** List every action item joined to its visit, with optional filtering. */
-export function listActionsWithContext(filters: ActionFilters = {}): ActionWithContext[] {
-    const rows = db
-        .prepare(
-            `SELECT a.*, v.id AS visitId, v.locationName, v.programArea, v.visitDate
+export async function listActionsWithContext(filters: ActionFilters = {}): Promise<ActionWithContext[]> {
+    const rs = await db.execute(
+        `SELECT a.*, v.id AS visitId, v.locationName, v.programArea, v.visitDate
        FROM ActionItem a
        JOIN Debrief d ON d.id = a.debriefId
        JOIN Visit v ON v.id = d.visitId
@@ -72,8 +67,8 @@ export function listActionsWithContext(filters: ActionFilters = {}): ActionWithC
          CASE a.status WHEN 'open' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END,
          CASE a.priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
          (a.dueDate IS NULL), a.dueDate ASC`
-        )
-        .all() as unknown as ActionContextRow[];
+    );
+    const rows = rs.rows as unknown as ActionContextRow[];
 
     const today = new Date().toISOString().slice(0, 10);
 
@@ -98,24 +93,23 @@ export function listActionsWithContext(filters: ActionFilters = {}): ActionWithC
         });
 }
 
-export function getAction(id: string): ActionItem | null {
-    const row = db.prepare('SELECT * FROM ActionItem WHERE id = ?').get(id) as
-        | ActionRow
-        | undefined;
+export async function getAction(id: string): Promise<ActionItem | null> {
+    const rs = await db.execute({ sql: 'SELECT * FROM ActionItem WHERE id = ?', args: [id] });
+    const row = rs.rows[0] as unknown as ActionRow | undefined;
     return row ? toAction(row) : null;
 }
 
 /** Fetch a single action enriched with its visit context. */
-export function getActionWithContext(id: string): ActionWithContext | null {
-    const row = db
-        .prepare(
-            `SELECT a.*, v.id AS visitId, v.locationName, v.programArea, v.visitDate
+export async function getActionWithContext(id: string): Promise<ActionWithContext | null> {
+    const rs = await db.execute({
+        sql: `SELECT a.*, v.id AS visitId, v.locationName, v.programArea, v.visitDate
        FROM ActionItem a
        JOIN Debrief d ON d.id = a.debriefId
        JOIN Visit v ON v.id = d.visitId
-       WHERE a.id = ?`
-        )
-        .get(id) as unknown as ActionContextRow | undefined;
+       WHERE a.id = ?`,
+        args: [id]
+    });
+    const row = rs.rows[0] as unknown as ActionContextRow | undefined;
 
     if (!row) return null;
     return {
@@ -136,47 +130,49 @@ export interface ActionInput {
     status?: ActionStatus;
 }
 
-export function createAction(debriefId: string, input: ActionInput): ActionItem {
+export async function createAction(debriefId: string, input: ActionInput): Promise<ActionItem> {
     const id = newId();
-    db.prepare(
-        `INSERT INTO ActionItem (id, debriefId, description, owner, priority, dueDate, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-        id,
-        debriefId,
-        input.description,
-        input.owner ?? null,
-        input.priority ?? 'medium',
-        input.dueDate ?? null,
-        input.status ?? 'open'
-    );
-    return getAction(id)!;
+    await db.execute({
+        sql: `INSERT INTO ActionItem (id, debriefId, description, owner, priority, dueDate, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+            id,
+            debriefId,
+            input.description,
+            input.owner ?? null,
+            input.priority ?? 'medium',
+            input.dueDate ?? null,
+            input.status ?? 'open'
+        ]
+    });
+    return (await getAction(id))!;
 }
 
-export function updateAction(id: string, input: Partial<ActionInput>): ActionItem | null {
-    const existing = getAction(id);
+export async function updateAction(id: string, input: Partial<ActionInput>): Promise<ActionItem | null> {
+    const existing = await getAction(id);
     if (!existing) return null;
-    db.prepare(
-        `UPDATE ActionItem SET description = ?, owner = ?, priority = ?, dueDate = ?, status = ?
-     WHERE id = ?`
-    ).run(
-        input.description ?? existing.description,
-        input.owner ?? existing.owner,
-        input.priority ?? existing.priority,
-        input.dueDate ?? existing.dueDate,
-        input.status ?? existing.status,
-        id
-    );
-    return getAction(id);
+    await db.execute({
+        sql: `UPDATE ActionItem SET description = ?, owner = ?, priority = ?, dueDate = ?, status = ?
+     WHERE id = ?`,
+        args: [
+            input.description ?? existing.description,
+            input.owner ?? existing.owner,
+            input.priority ?? existing.priority,
+            input.dueDate ?? existing.dueDate,
+            input.status ?? existing.status,
+            id
+        ]
+    });
+    return await getAction(id);
 }
 
-export function deleteAction(id: string): boolean {
-    const result = db.prepare('DELETE FROM ActionItem WHERE id = ?').run(id);
-    return result.changes > 0;
+export async function deleteAction(id: string): Promise<boolean> {
+    const rs = await db.execute({ sql: 'DELETE FROM ActionItem WHERE id = ?', args: [id] });
+    return rs.rowsAffected > 0;
 }
 
 /** Remove all action items belonging to a debrief (used when regenerating). */
-export function deleteActionsByDebrief(debriefId: string): number {
-    const result = db.prepare('DELETE FROM ActionItem WHERE debriefId = ?').run(debriefId);
-    return Number(result.changes);
+export async function deleteActionsByDebrief(debriefId: string): Promise<number> {
+    const rs = await db.execute({ sql: 'DELETE FROM ActionItem WHERE debriefId = ?', args: [debriefId] });
+    return rs.rowsAffected;
 }

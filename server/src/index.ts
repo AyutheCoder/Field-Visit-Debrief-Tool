@@ -36,10 +36,10 @@ app.use(authMiddleware);
 app.use('/uploads', express.static(UPLOADS_DIR));
 
 // // Health check
-app.get('/api/health', (_req, res) => {
+app.get('/api/health', async (_req, res) => {
     let dbStatus = 'unknown';
     try {
-        db.prepare('SELECT 1 AS ok').get();
+        await db.execute('SELECT 1 AS ok');
         dbStatus = 'connected';
     } catch {
         dbStatus = 'disconnected';
@@ -68,13 +68,26 @@ app.use('/api/intake', intakeRouter);
 app.use('/api/alerts', alertsRouter);
 app.use('/api/chat', chatRouter);
 
-// // Root
-app.get('/', (_req, res) => {
-    res.json({ message: 'Field Visit Debrief API - see /api/health' });
-});
+// // API 404 + error handling
+app.use('/api', notFoundHandler);
+app.use('/api', errorHandler);
 
-// // 404 + error handling
-app.use(notFoundHandler);
+import { join } from 'node:path';
+
+if (process.env.NODE_ENV === 'production') {
+    const clientDist = join(__dirname, '../../client/dist');
+    app.use(express.static(clientDist));
+    app.get('*', (_req, res) => {
+        res.sendFile(join(clientDist, 'index.html'));
+    });
+} else {
+    // // Root
+    app.get('/', (_req, res) => {
+        res.json({ message: 'Field Visit Debrief API - see /api/health' });
+    });
+    app.use(notFoundHandler);
+}
+
 app.use(errorHandler);
 
 const server = app.listen(PORT, () => {

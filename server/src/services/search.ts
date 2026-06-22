@@ -126,7 +126,7 @@ async function ensureVisitEmbeddings(
     visits: VisitWithRelations[],
     refresh: boolean
 ): Promise<Map<string, number[]>> {
-    const cached = new Map(listEmbeddings().map((e) => [e.visitId, e.vector] as const));
+    const cached = new Map((await listEmbeddings()).map((e) => [e.visitId, e.vector] as const));
     const map = new Map<string, number[]>();
 
     const toEmbed: VisitWithRelations[] = [];
@@ -141,13 +141,14 @@ async function ensureVisitEmbeddings(
 
     if (toEmbed.length > 0) {
         const vectors = await createEmbeddings(toEmbed.map((v) => visitText(v)));
-        toEmbed.forEach((v, i) => {
+        for (let i = 0; i < toEmbed.length; i++) {
+            const v = toEmbed[i];
             const vec = vectors[i];
             if (Array.isArray(vec)) {
-                upsertEmbedding(v.id, vec);
+                await upsertEmbedding(v.id, vec);
                 map.set(v.id, vec);
             }
-        });
+        }
     }
 
     return map;
@@ -188,7 +189,7 @@ export async function search(
     refresh = false
 ): Promise<SearchResponse> {
     const trimmed = query.trim();
-    const visits = listVisitsWithRelations();
+    const visits = await listVisitsWithRelations();
 
     if (!trimmed) {
         return { query: trimmed, requestedMode, mode: requestedMode, results: [] };
