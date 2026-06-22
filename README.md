@@ -92,7 +92,8 @@ All users share the password: **`demo1234`**
 
 ---
 ## Demo Video
-🎥 [Click here to watch the demo](https://github.com/AyutheCoder/Field-Visit-Debrief-Tool/blob/main/C%20Field%20Visit%20Debrief.mp4)
+🎥 [Click here to watch the demo](## Demo Video
+🎥 [Click here to watch the demo](https://raw.githubusercontent.com/AyutheCoder/Field-Visit-Debrief-Tool/main/C%20Field%20Visit%20Debrief.mp4))
 
 ## 📚 Documentation
 
