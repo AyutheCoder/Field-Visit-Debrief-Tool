@@ -29,6 +29,7 @@ const SENTIMENT_LABELS: SentimentLabel[] = ['positive', 'neutral', 'negative'];
 const PRIORITIES: Priority[] = ['high', 'medium', 'low'];
 
 function resolveMediaPath(url: string): string {
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
     return join(UPLOADS_DIR, basename(url));
 }
 

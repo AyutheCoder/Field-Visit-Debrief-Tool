@@ -84,6 +84,11 @@ export async function transcribeAudioFile(
     filePath: string,
     mimetype: string
 ): Promise<string> {
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        // Skip downloading for the mock response
+        const fakeBuffer = Buffer.from('');
+        return transcribeAudioBuffer(fakeBuffer, mimetype, basename(filePath));
+    }
     const buffer = await readFile(filePath);
     return transcribeAudioBuffer(buffer, mimetype, basename(filePath));
 }
