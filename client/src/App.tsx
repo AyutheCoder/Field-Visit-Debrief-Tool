@@ -12,6 +12,7 @@ import { useAuth } from './lib/auth';
 import { useToast } from './components/ui/Toast';
 import { countQueued, onQueueChange } from './lib/offline';
 import { syncQueuedVisits } from './lib/sync';
+import ThemePicker from './components/ThemePicker';
 import type { Role } from './types';
 
 type ViewName =
@@ -151,14 +152,14 @@ export default function App() {
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-lg">
             📍
           </div>
-          <div className="flex-1">
-            <h1 className="text-base font-bold leading-tight text-gray-900">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base font-bold leading-tight text-gray-900 truncate">
               Field Visit Debrief
             </h1>
-            <p className="text-xs text-gray-500">{activeTab.subtitle}</p>
+            <p className="text-xs text-gray-500 truncate hidden sm:block">{activeTab.subtitle}</p>
           </div>
 
-          <nav className="flex gap-1 rounded-lg bg-gray-100 p-1">
+          <nav className="flex gap-1 rounded-lg bg-gray-100 p-1 overflow-x-auto whitespace-nowrap hide-scrollbar max-w-[50vw] sm:max-w-none">
             {visibleTabs.map((t) => (
               <TabButton
                 key={t.name}
@@ -184,6 +185,7 @@ export default function App() {
                 {online ? `${pending} pending` : 'Offline'}
               </span>
             )}
+            <ThemePicker />
             <UserMenu
               name={user.name}
               role={user.role}

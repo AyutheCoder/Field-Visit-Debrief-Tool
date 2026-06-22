@@ -440,7 +440,7 @@ export default function CaptureScreen({ onCreated }: Props) {
                 value={s.name}
                 onChange={(e) => updateStakeholder(s.id, { name: e.target.value })}
               />
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   className={inputClass}
                   placeholder="Role"

@@ -214,8 +214,8 @@ export default function ActionTracker() {
           ))}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-100">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-gray-100">
+          <table className="w-full text-left text-sm whitespace-nowrap min-w-max">
             <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="px-4 py-2">Action</th>

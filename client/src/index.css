@@ -2,6 +2,109 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+@layer base {
+  :root {
+    /* DEFAULT THEME (Teal / Base Grays) */
+    --brand-50: 240 253 250;
+    --brand-100: 204 251 241;
+    --brand-200: 153 246 228;
+    --brand-300: 94 234 212;
+    --brand-400: 45 212 191;
+    --brand-500: 20 184 166;
+    --brand-600: 13 148 136;
+    --brand-700: 15 118 110;
+    --brand-800: 17 94 89;
+    --brand-900: 19 78 74;
+
+    --gray-50: 249 250 251;
+    --gray-100: 243 244 246;
+    --gray-200: 229 231 235;
+    --gray-300: 209 213 219;
+    --gray-400: 156 163 175;
+    --gray-500: 107 114 128;
+    --gray-600: 75 85 99;
+    --gray-700: 55 65 81;
+    --gray-800: 31 41 55;
+    --gray-900: 17 24 39;
+
+    --white: 255 255 255;
+    --black: 0 0 0;
+  }
+
+  [data-theme="sunset"] {
+    /* Sunset Theme (Warm Oranges/Reds) */
+    --brand-50: 255 247 237;
+    --brand-100: 255 237 213;
+    --brand-200: 254 215 170;
+    --brand-300: 253 186 116;
+    --brand-400: 251 146 60;
+    --brand-500: 249 115 22;
+    --brand-600: 234 88 12;
+    --brand-700: 194 65 12;
+    --brand-800: 154 52 18;
+    --brand-900: 124 45 18;
+  }
+
+  [data-theme="blue"] {
+    /* Blue Theme */
+    --brand-50: 239 246 255;
+    --brand-100: 219 234 254;
+    --brand-200: 191 219 254;
+    --brand-300: 147 197 253;
+    --brand-400: 96 165 250;
+    --brand-500: 59 130 246;
+    --brand-600: 37 99 235;
+    --brand-700: 29 78 216;
+    --brand-800: 30 64 175;
+    --brand-900: 30 58 138;
+  }
+
+  [data-theme="metallic"] {
+    /* Metallic Theme (Silvers/Grays/Golds) - using slate/zinc with a hint of gold */
+    --brand-50: 248 250 252;
+    --brand-100: 241 245 249;
+    --brand-200: 226 232 240;
+    --brand-300: 203 213 225;
+    --brand-400: 148 163 184;
+    --brand-500: 100 116 139;
+    --brand-600: 71 85 105;
+    --brand-700: 51 65 85;
+    --brand-800: 30 41 59;
+    --brand-900: 15 23 42;
+  }
+
+  [data-theme="forest"] {
+    /* Forest Theme (Deep Greens/Earth) */
+    --brand-50: 240 253 244;
+    --brand-100: 220 252 231;
+    --brand-200: 187 247 208;
+    --brand-300: 134 239 172;
+    --brand-400: 74 222 128;
+    --brand-500: 34 197 94;
+    --brand-600: 22 163 74;
+    --brand-700: 21 128 61;
+    --brand-800: 22 101 52;
+    --brand-900: 20 83 45;
+  }
+
+  [data-theme="dark"] {
+    /* Dark Theme: Invert the grayscale and use the default brand (or a slightly cooler brand) */
+    --gray-900: 249 250 251;
+    --gray-800: 243 244 246;
+    --gray-700: 229 231 235;
+    --gray-600: 209 213 219;
+    --gray-500: 156 163 175;
+    --gray-400: 107 114 128;
+    --gray-300: 75 85 99;
+    --gray-200: 55 65 81;
+    --gray-100: 31 41 55;
+    --gray-50: 17 24 39;
+
+    --white: 31 41 55; /* Map white backgrounds to gray-800 in dark mode */
+    --black: 249 250 251; /* Map black text to gray-50 */
+  }
+}
+
 html,
 body,
 #root {
@@ -12,4 +115,16 @@ body,
 body {
   font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  background-color: rgb(var(--gray-50));
+  color: rgb(var(--gray-900));
+}
+
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
