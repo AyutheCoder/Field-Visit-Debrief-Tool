@@ -43,6 +43,18 @@
     --brand-700: 194 65 12;
     --brand-800: 154 52 18;
     --brand-900: 124 45 18;
+
+    /* Override grays to be Sunset-tinted so background changes */
+    --gray-50: 255 247 237;
+    --gray-100: 255 237 213;
+    --gray-200: 254 215 170;
+    --gray-300: 253 186 116;
+    --gray-400: 251 146 60;
+    --gray-500: 194 65 12; /* Darkened for legible secondary text */
+    --gray-600: 154 52 18;
+    --gray-700: 124 45 18;
+    --gray-800: 67 20 7; /* Extra dark for primary text */
+    --gray-900: 67 20 7;
   }
 
   [data-theme="blue"] {
@@ -57,10 +69,22 @@
     --brand-700: 29 78 216;
     --brand-800: 30 64 175;
     --brand-900: 30 58 138;
+
+    /* Override grays to be Blue-tinted */
+    --gray-50: 239 246 255;
+    --gray-100: 219 234 254;
+    --gray-200: 191 219 254;
+    --gray-300: 147 197 253;
+    --gray-400: 96 165 250;
+    --gray-500: 29 78 216;
+    --gray-600: 30 64 175;
+    --gray-700: 30 58 138;
+    --gray-800: 23 37 84;
+    --gray-900: 23 37 84;
   }
 
   [data-theme="metallic"] {
-    /* Metallic Theme (Silvers/Grays/Golds) - using slate/zinc with a hint of gold */
+    /* Metallic Theme (Silvers/Grays/Golds) */
     --brand-50: 248 250 252;
     --brand-100: 241 245 249;
     --brand-200: 226 232 240;
@@ -71,6 +95,18 @@
     --brand-700: 51 65 85;
     --brand-800: 30 41 59;
     --brand-900: 15 23 42;
+
+    /* Metallic is slate-colored */
+    --gray-50: 248 250 252;
+    --gray-100: 241 245 249;
+    --gray-200: 226 232 240;
+    --gray-300: 203 213 225;
+    --gray-400: 148 163 184;
+    --gray-500: 51 65 85;
+    --gray-600: 30 41 59;
+    --gray-700: 15 23 42;
+    --gray-800: 2 6 23;
+    --gray-900: 2 6 23;
   }
 
   [data-theme="forest"] {
@@ -85,6 +121,18 @@
     --brand-700: 21 128 61;
     --brand-800: 22 101 52;
     --brand-900: 20 83 45;
+
+    /* Override grays to be Forest-tinted */
+    --gray-50: 240 253 244;
+    --gray-100: 220 252 231;
+    --gray-200: 187 247 208;
+    --gray-300: 134 239 172;
+    --gray-400: 74 222 128;
+    --gray-500: 21 128 61;
+    --gray-600: 22 101 52;
+    --gray-700: 20 83 45;
+    --gray-800: 5 46 22;
+    --gray-900: 5 46 22;
   }
 
   [data-theme="dark"] {
