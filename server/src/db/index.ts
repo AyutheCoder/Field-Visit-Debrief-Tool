@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 
 // Support both local SQLite and Turso
 function resolveDbUrl(): string {
-    const raw = process.env.DATABASE_URL?.trim() || 'file:./data/dev.db';
+    const raw = process.env.TURSO_URL?.trim() || process.env.DATABASE_URL?.trim() || 'file:./data/dev.db';
     if (raw.startsWith('file:')) {
         const withoutScheme = raw.slice('file:'.length);
         const abs = resolve(process.cwd(), withoutScheme);
@@ -17,7 +17,7 @@ function resolveDbUrl(): string {
 
 export const db = createClient({
     url: resolveDbUrl(),
-    authToken: process.env.DATABASE_AUTH_TOKEN,
+    authToken: process.env.TURSO_TOKEN || process.env.DATABASE_AUTH_TOKEN,
 });
 
 /** Create all tables from schema.sql if they do not already exist. */
