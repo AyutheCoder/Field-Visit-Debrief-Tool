@@ -27,6 +27,7 @@ async function main() {
     await db.execute('PRAGMA foreign_keys = ON;');
 
     // --- Users ---
+    console.log("Creating user asha...");
     const officer = await createUser({
         name: 'Asha Mwangi',
         email: 'asha@fieldteam.org',

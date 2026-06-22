@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import './suppress';
 import { createClient } from '@libsql/client';
 import { readFileSync, mkdirSync } from 'node:fs';
