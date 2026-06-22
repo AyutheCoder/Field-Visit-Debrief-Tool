@@ -2,6 +2,7 @@ services:
   - type: web
     name: field-visit-debrief
     env: node
+    plan: free
     buildCommand: npm run install:all && npm run build
     startCommand: npm start
     envVars:
